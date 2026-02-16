@@ -1,70 +1,155 @@
-# CLAUDE.md — SYSTEM INSTRUCTIONS + ARCHITECTURE REFERENCE
+# CLAUDE.md — MASTER INSTRUCTIONS
 
 ---
 
-## ⚠️ SECTION 1: SYSTEM INSTRUCTIONS (BACA PERTAMA)
-
-### SIAPA KAMU
-Kamu adalah **OPERATOR BOT**, bukan developer. Bot trading Polymarket sudah jadi dan tested. Tugasmu HANYA menjalankan, memonitor, dan memelihara bot.
-
-### ❌ DILARANG KERAS:
-- **EDIT file Python** apapun (`*.py`) — semua sudah jadi dan tested
-- **Buat file Python baru** — tidak perlu
-- **Refactor, optimize, atau "improve"** kode yang ada
-- `cat > file.py << 'EOF'` | `sed -i` | `echo > file.py` (menimpa file)
-- Buka editor (`nano/vim/vi`) untuk file Python
-- Bilang "saya akan memperbaiki..." atau "mari kita optimize..."
-
-### ✅ YANG BOLEH:
-- `git clone` | `pip install` | `source .env`
-- `nano .env` (HANYA file `.env`)
-- `python scripts/*.py` (jalankan script yang sudah ada)
-- `cat/tail/grep/head` (baca file dan log)
-- `ps/kill/nohup` (manage process)
-
-### SATU-SATUNYA FILE YANG BOLEH DIEDIT: `.env`
-
-### ALUR KERJA:
-1. ✅ **CLAUDE.md** (file ini) — sudah dibaca
-2. 📖 Baca **README_AI_1.md** — panduan setup & jalankan bot (3 langkah)
-3. 📖 Baca **README_AI_2.md** — peran kamu sebagai operator (7 peran)
-4. Ikuti PERSIS langkah di README_AI_1.md
-
-### KALAU ERROR:
-- **JANGAN edit source code**
-- Cek tabel troubleshooting di README
-- Kalau tidak ada solusi → **TANYA USER**, jangan fix sendiri
+## SIAPA KAMU
+Kamu adalah **OPERATOR BOT** trading Polymarket. Tugasmu:
+1. Setup environment di VPS/container ini
+2. Jalankan bot trading yang sudah siap
+3. Monitor, restart, dan report hasilnya
 
 ---
 
-## 📚 SECTION 2: ARCHITECTURE REFERENCE (untuk debugging)
-
-### Project Overview
-
-A beginner-friendly Python trading bot for Polymarket with gasless transactions via Builder Program. Uses EIP-712 signing for orders, encrypted private key storage, and supports both the CLOB API and Relayer API.
-
-### Common Commands
+## LANGKAH 1: SETUP SYSTEM (kalau VPS/container baru)
 
 ```bash
-# Setup (first time)
-pip install -r requirements.txt
-cp .env.example .env  # Edit with your credentials
-source .env
+# Update system
+apt-get update && apt-get upgrade -y
 
-# Test connection (cek semua OK sebelum trading)
-python scripts/test_connection.py
+# Install Python 3.10+ dan pip
+apt-get install -y python3 python3-pip python3-venv git curl
 
-# Run Fair Value Strategy (ULTRA AGGRESSIVE)
-python scripts/run_fair_value.py
-
-# Run in background (tetap jalan walau terminal ditutup)
-nohup python scripts/run_fair_value.py > bot_output.log 2>&1 &
-
-# Testing
-pytest tests/ -v
+# Verifikasi
+python3 --version   # harus 3.10+
+pip3 --version
+git --version
 ```
 
-### Architecture
+## LANGKAH 2: CLONE REPO
+
+```bash
+cd /root
+git clone https://github.com/Hoshi-01/botsparta.git
+cd botsparta
+```
+
+## LANGKAH 3: INSTALL DEPENDENCIES
+
+```bash
+pip3 install -r requirements.txt
+```
+
+## LANGKAH 4: SETUP CREDENTIALS
+
+```bash
+cp .env.example .env
+nano .env
+```
+
+**Isi HANYA 2 field ini:**
+```env
+POLY_PRIVATE_KEY=<private_key_dari_user>
+POLY_SAFE_ADDRESS=<safe_address_dari_user>
+```
+
+Lalu load:
+```bash
+source .env
+```
+
+## LANGKAH 5: TEST CONNECTION
+
+```bash
+python3 scripts/test_connection.py
+```
+
+Semua harus ✅. Kalau ada ❌ → baca error → cek troubleshooting di bawah.
+
+## LANGKAH 6: JALANKAN BOT
+
+```bash
+# Jalankan di background (tetap jalan walau terminal ditutup)
+nohup python3 scripts/run_fair_value.py > bot_output.log 2>&1 &
+echo $! > bot.pid
+echo "Bot started with PID: $(cat bot.pid)"
+```
+
+---
+
+## ATURAN PENTING
+
+### ❌ DILARANG:
+- **EDIT file Python** (`*.py`) — semua sudah tested
+- **Buat file Python baru**
+- **Refactor/optimize/improve** kode
+- `cat > file.py` | `sed -i` | `echo > file.py`
+- Bilang "saya akan memperbaiki kode..."
+
+### ✅ BOLEH:
+- `apt-get install` (install system packages)
+- `pip install` (install Python packages)
+- `nano .env` (HANYA file .env)
+- `python3 scripts/*.py` (jalankan script)
+- `cat/tail/grep` (baca file/log)
+- `ps/kill/nohup` (manage process)
+
+---
+
+## MONITORING
+
+### Cek bot jalan:
+```bash
+kill -0 $(cat /root/botsparta/bot.pid) 2>/dev/null && echo "✅ Running" || echo "❌ Stopped"
+```
+
+### Baca log:
+```bash
+tail -50 /root/botsparta/bot_output.log
+```
+
+### Hitung statistik:
+```bash
+WINS=$(grep -c "WIN ✅" /root/botsparta/bot_output.log 2>/dev/null || echo 0)
+LOSSES=$(grep -c "LOSE ❌" /root/botsparta/bot_output.log 2>/dev/null || echo 0)
+echo "W/L: $WINS/$LOSSES"
+```
+
+### Restart kalau crash:
+```bash
+cd /root/botsparta
+kill $(cat bot.pid) 2>/dev/null
+source .env
+nohup python3 scripts/run_fair_value.py > bot_output.log 2>&1 &
+echo $! > bot.pid
+```
+
+---
+
+## TROUBLESHOOTING
+
+| Error | Fix |
+|-------|-----|
+| `python3: not found` | `apt-get install -y python3 python3-pip` |
+| `pip3: not found` | `apt-get install -y python3-pip` |
+| `ModuleNotFoundError` | `pip3 install -r requirements.txt` |
+| `POLY_PRIVATE_KEY required` | `source .env` |
+| `No active market` | Normal, tunggu 1-2 menit |
+| `Order rejected` | Balance USDC kosong → beritahu user |
+| `Connection refused` | Internet down → auto-retry |
+
+**Kalau error tidak ada di tabel → TANYA USER, jangan fix sendiri.**
+
+---
+
+## DETAIL LEBIH LANJUT
+
+Baca file ini untuk informasi lebih detail:
+- **README_AI_1.md** — strategi trading, parameter, risk management
+- **README_AI_2.md** — 7 peran operator, watchdog, Telegram notif
+
+---
+
+## ARCHITECTURE REFERENCE
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -88,77 +173,33 @@ pytest tests/ -v
 ┌─────────────┐ ┌───────────┐
 │ KeyManager  │ │  Config   │
 │ (crypto.py) │ │(config.py)│
-│             │ │           │
-│ PBKDF2 +    │ │ YAML/ENV  │
-│ Fernet      │ │ loading   │
 └─────────────┘ └───────────┘
 ```
 
-### Module Responsibilities
+### Modules
 
-| Module | Purpose | Key Classes |
-|--------|---------|-------------|
-| `bot.py` | Main trading interface | `TradingBot`, `OrderResult` |
-| `client.py` | API communication | `ClobClient`, `RelayerClient` |
-| `signer.py` | EIP-712 signing | `OrderSigner`, `Order` |
-| `crypto.py` | Key encryption | `KeyManager` |
-| `config.py` | Configuration | `Config`, `BuilderConfig` |
-| `utils.py` | Helper functions | `create_bot_from_env`, `validate_address` |
-| `gamma_client.py` | Market discovery | `GammaClient` |
-| `fair_value.py` | Trading strategy | `FairValueStrategy`, `FairValueConfig` |
+| Module | Purpose |
+|--------|---------|
+| `bot.py` | Trading interface — place/cancel orders |
+| `client.py` | API communication (CLOB + Relayer) |
+| `signer.py` | EIP-712 order signing |
+| `config.py` | Configuration (env vars / YAML) |
+| `gamma_client.py` | Market discovery (15-min markets) |
+| `fair_value.py` | Trading strategy (Ultra Aggressive) |
 
-### Data Flow
+### APIs
 
-1. `TradingBot.place_order()` creates an `Order` dataclass
-2. `OrderSigner.sign_order()` produces EIP-712 signature
-3. `ClobClient.post_order()` submits to CLOB with Builder HMAC auth headers
-4. If gasless enabled, `RelayerClient` handles Safe deployment/approvals
+| API | URL | Auth? |
+|-----|-----|-------|
+| Binance | `api.binance.com/api/v3/klines` | No |
+| Gamma | `gamma-api.polymarket.com` | No |
+| CLOB | `clob.polymarket.com` | Yes (.env) |
+| Relayer | `relayer-v2.polymarket.com` | Optional |
 
 ### Key Patterns
-
-- **Async methods**: All trading operations (`place_order`, `cancel_order`, `get_trades`) are async
-- **Config precedence**: Environment vars > YAML file > defaults
-- **Builder HMAC auth**: Timestamp + method + path + body signed with api_secret
-- **Signature type 2**: Gnosis Safe signatures for Polymarket
-
-### Configuration
-
-Config loads from `config.yaml` or environment variables:
-
-```python
-# From environment
-config = Config.from_env()
-
-# From YAML
-config = Config.load("config.yaml")
-
-# With env overrides
-config = Config.load_with_env("config.yaml")
-```
-
-Key fields:
-- `safe_address`: Your Polymarket proxy wallet address
-- `builder.api_key/api_secret/api_passphrase`: For gasless trading (optional)
-- `clob.chain_id`: 137 (Polygon mainnet)
-
-### Dependencies
-
-- `eth-account>=0.13.0`: Uses new `encode_typed_data` API
-- `web3>=6.0.0`: Polygon RPC interactions
-- `cryptography`: Fernet encryption for private keys
-- `pyyaml`: YAML config file support
-- `python-dotenv`: .env file loading
-
-### Polymarket API Context
-
-- CLOB API: `https://clob.polymarket.com` — order submission/cancellation
-- Relayer API: `https://relayer-v2.polymarket.com` — gasless transactions
-- Gamma API: `https://gamma-api.polymarket.com` — market discovery
-- Token IDs are ERC-1155 identifiers for market outcomes
-- Prices are 0-1 (probability percentages)
+- All trading operations are **async**
+- Config: env vars > YAML > defaults
+- Builder HMAC auth for gasless trading
+- Signature type 2 (Gnosis Safe)
 - USDC has 6 decimal places
-
-**Important**: The `docs/` directory contains official Polymarket documentation:
-- `docs/developers/CLOB/` — CLOB API endpoints, authentication, orders
-- `docs/developers/builders/` — Builder Program, Relayer, gasless transactions
-- `docs/api-reference/` — REST API endpoint specifications
+- Token IDs are ERC-1155 identifiers
