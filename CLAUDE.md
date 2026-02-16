@@ -67,11 +67,32 @@ Semua harus ✅. Kalau ada ❌ → baca error → cek troubleshooting di bawah.
 
 ## LANGKAH 6: JALANKAN BOT
 
+Ada 2 strategi — **pilih salah satu** (user akan bilang mana):
+
+### Strategy A: Fair Value (analisis sendiri)
 ```bash
-# Jalankan di background (tetap jalan walau terminal ditutup)
 nohup python3 scripts/run_fair_value.py > bot_output.log 2>&1 &
 echo $! > bot.pid
 echo "Bot started with PID: $(cat bot.pid)"
+```
+
+### Strategy B: Copy Trade (mirror whale $604K) — RECOMMENDED
+```bash
+nohup python3 scripts/copy_trade.py > bot_output.log 2>&1 &
+echo $! > bot.pid
+echo "Bot started with PID: $(cat bot.pid)"
+```
+
+### Parameter opsional:
+```bash
+# Custom size:
+python3 scripts/copy_trade.py --size 1.00
+
+# Custom balance:
+python3 scripts/copy_trade.py --balance 50 --size 2.00
+
+# Faster polling (250ms):
+python3 scripts/copy_trade.py --poll 250
 ```
 
 ---
